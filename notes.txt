@@ -1,0 +1,32 @@
+535 PROJECT 4 NOTES
+
+When u get back
+
+Cross-shard
+0.  Setup the ack msg in protobuf, then set up the participant cluster returning it in leaderbroadcastcommit
+1. setup coordinator timeouts, timers, and ack receipts similar to how client does it.
+2. test set 3
+3. setup abort handles wherever needed(processcommit, leaderbroadcastcommit, execute)
+
+1. The coordinator cluster has a timer for each cross-shard transaction (the time that it waits for the participant cluster to send 
+back its vote). Once the timer expires, the leader of the coordinator cluster runs consensus to abort the transaction. 
+
+2.b. Pending Transaction: Similar to intra-shard transactions; the sender has adequate balance, locks are obtained and a sequence 
+number is assigned by the leader of the coordinator cluster; yet consensus isn’t achieved (e.g., due to lack of quorum).
+
+2.c. Aborted Transaction: Sufficient balance exists for the sender and locks are obtained along with a designated sequence number 
+allowing consensus in the coordinator cluster. However, the transaction is pending in the participant cluster 
+(due to a lack of quorum there, so participant doesn't do anything, nor send anything to coordinator), if the timer expires in the 
+coordinator cluster, then the coordinator runs consensus to abort the transaction and informs the participant cluster and the 
+client about this aborted transaction. client counts this as response i.e doesn't resend. needs ack phase to ensure they received it
+(just use an RPC return msg for ack?)
+
+3. For each cross-shard transaction, we might have two records in the datastore (one after the prepare phase and one after the 
+commit phase) and each record has its own sequence number. You execute transactions sequentially:
+
+- when you reach a sequence number that is the result of the prepare phase of a cross-shard transaction, you execute the 
+transaction while writing on WAL.
+- When you reach a sequence number that is the result of the commit phase of a cross-shard transaction, you either undo the 
+execution using WAL (if abort) or delete the record on WAL (if commit).
+
+2f+1 commit msgs on coordinator prepare: https://piazza.com/class/m02qzstrzw256g/post/279

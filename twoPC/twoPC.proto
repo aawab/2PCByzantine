@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+option go_package = "./twoPC";
+
+package twoPC;
+
+service twoPC {
+  //Client to server
+  rpc NotifyLiveness (Liveness) returns (Empty){}
+  rpc NotifyByzantine(Byzantine) returns (Empty){}
+  rpc RequestTransaction (TxRequest) returns (Empty) {}
+  rpc RequestBalance (BalanceRequest) returns (BalanceResponse) {}
+  rpc RequestDS (ServerRequested) returns (DSResponse) {}
+
+  //Server to server
+  rpc ProcessPrePrepare(PrePrepare) returns (Prepare) {}
+  rpc ProcessPrepare(Prepare) returns (Commit) {}
+  rpc ProcessCommit(Commit) returns (Empty) {}
+
+  //Server to client
+  rpc ReplyToClient(Reply) returns (Empty) {}
+
+  //TwoPC 
+  rpc CoordinatorPrepare (TxRequest) returns (Empty) {}
+  rpc ParticipantPrepare (twoPCPrepare) returns (Empty) {}
+  rpc CoordinatorCommit  (twoPCPrepare) returns (Empty) {}
+  rpc ParticipantCommit (twoPCCommit) returns (Empty) {}
+  rpc CoordinatorAck (Ack) returns (Empty){}
+}
+
+message Ack{
+  int64 serverID =1;
+  int64 receiverSeq =2;
+  int64 senderSeq =3;
+}
+
+message twoPCPrepare{
+  int64 senderID =1;
+  TxRequest req = 2;
+  repeated Commit commitMsgs =3;
+  int64 senderSeq = 4;
+}
+
+message twoPCCommit{
+  int64 senderID =1;
+  TxRequest req = 2;
+  string outcome =3;
+  int64 senderSeq = 4;
+}
+
+message Reply {
+  int64 view =1;
+  int64 timestamp = 2;
+  string clientID = 3;
+  int64 replicaID = 4;
+  string result = 5;
+  bytes signature = 6;
+}
+
+// Just in case we need anything to return null
+message Empty{}
+
+message Liveness{
+  bool live = 1;
+}
+
+message Byzantine {
+  bool byzantine=1;
+}
+
+message BalanceRequest{
+  string clientID = 1;
+}
+
+// For Print functions
+message ServerRequested {
+  string serverID = 1;
+}
+
+// For Print function responses
+message BalanceResponse{
+  string balance = 1;
+}
+
+message DSEntry {
+  int64 seq =1;
+  Transaction tx = 2;
+  string status =3;
+}
+
+message DSResponse{
+  repeated DSEntry DS = 1;
+}
+
+message PrePrepare {
+  int64 view = 1;
+  int64 seq = 2;
+  TxRequest request = 3;
+  bytes signature = 4;
+  string twoPCState =5;
+  string who =6;
+}
+
+message Prepare {
+  int64 view = 1;
+  int64 seq = 2;
+  bytes digest = 3;
+  int64 replicaID = 4;
+  bytes signature = 5;
+  string twoPCState =6;
+  string who =7;
+}
+
+message Commit {
+  int64 view = 1;
+  int64 seq = 2;
+  bytes digest = 3;
+  int64 replicaID = 4;
+  bytes signature = 5;
+  string twoPCState =6;
+  string who =7;
+}
+
+message PrepareRequest {
+  Transaction Tx = 1;
+  int32 TxID = 2; 
+}
+
+message PrepareResponse{
+	bool Prepared = 1;
+}
+
+message CommitRequest {
+	Transaction Tx = 1;
+	int32 TxID = 2;
+}
+
+message CommitResponse{
+	bool Committed = 1;
+}
+
+message AbortRequest {
+	Transaction Tx = 1;
+	int32 TxID = 2;
+}
+
+message Transaction {
+  string S = 1;
+  string R = 2;
+  string Amt = 3;
+  string Seq = 4;
+}
+
+message TxRequest {
+  Transaction tx = 1;
+  int64 timestamp = 2;
+  bytes signature = 3;
+}
